@@ -1,3 +1,5 @@
+mod repl;
+
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use mlrs_core::Rlm;
@@ -100,7 +102,7 @@ async fn main() -> Result<()> {
             println!("{answer}");
         }
         Commands::Interactive => {
-            run_interactive(rlm).await?;
+            repl::run(rlm)?;
         }
     }
 
@@ -116,36 +118,4 @@ fn resolve_context(context: Option<String>, context_file: Option<PathBuf>) -> Re
             .with_context(|| format!("read context file: {}", p.display()));
     }
     Ok(String::new())
-}
-
-async fn run_interactive(rlm: Rlm) -> Result<()> {
-    use std::io::{self, BufRead, Write};
-
-    let stdin = io::stdin();
-    let stdout = io::stdout();
-
-    print!("query> ");
-    stdout.lock().flush()?;
-    let mut query = String::new();
-    stdin.lock().read_line(&mut query)?;
-    let query = query.trim().to_string();
-
-    print!("context (leave blank to skip, or enter a file path)> ");
-    stdout.lock().flush()?;
-    let mut ctx_input = String::new();
-    stdin.lock().read_line(&mut ctx_input)?;
-    let ctx_input = ctx_input.trim();
-
-    let context = if ctx_input.is_empty() {
-        String::new()
-    } else if std::path::Path::new(ctx_input).exists() {
-        std::fs::read_to_string(ctx_input)
-            .with_context(|| format!("read context file: {ctx_input}"))?
-    } else {
-        ctx_input.to_string()
-    };
-
-    let answer = rlm.run(&query, &context).await?;
-    println!("\nAnswer: {answer}");
-    Ok(())
 }

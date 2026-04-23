@@ -365,6 +365,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dotenvy"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1022,6 +1028,8 @@ dependencies = [
  "clap",
  "mlrs-core",
  "mlrs-providers",
+ "slash-core",
+ "slash-lang",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1750,6 +1758,29 @@ name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
+
+[[package]]
+name = "slash-core"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5182411b422e0271a71037c8da179ed158ea512685c253aeba17b61738050a46"
+dependencies = [
+ "anyhow",
+ "dotenvy",
+ "indexmap",
+ "serde",
+ "serde_json",
+ "slash-lang",
+]
+
+[[package]]
+name = "slash-lang"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46a9b2e8a581dafa3cd831f2a182f3b6ad4b02f27fdbb69a8761809e1d256bca"
+dependencies = [
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "smallvec"
