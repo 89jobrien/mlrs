@@ -42,3 +42,27 @@ impl Notebook {
             .join("\n\n")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn notebook_push_and_history() {
+        let mut nb = Notebook::default();
+        assert!(nb.as_history().is_empty());
+        nb.push("ctx_len()".into(), "42".into());
+        let h = nb.as_history();
+        assert!(h.contains("Cell 0"));
+        assert!(h.contains("ctx_len()"));
+        assert!(h.contains("42"));
+    }
+
+    #[test]
+    fn step_result_variants() {
+        let c = StepResult::Continue("out".into());
+        let f = StepResult::Final("answer".into());
+        assert!(matches!(c, StepResult::Continue(_)));
+        assert!(matches!(f, StepResult::Final(_)));
+    }
+}
