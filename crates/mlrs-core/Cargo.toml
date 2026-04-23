@@ -1,0 +1,23 @@
+[package]
+name = "mlrs-core"
+description = "Core RLM engine — recursive LLM inference via Rhai scripting"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["llm", "recursive", "rhai", "inference", "ai"]
+categories = ["science", "text-processing"]
+
+[dependencies]
+anyhow.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+serde.workspace = true
+rhai = { version = "1", features = ["sync"] }
+regex = "1"
+thiserror = "1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }

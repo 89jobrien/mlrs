@@ -1,0 +1,21 @@
+[package]
+name = "mlrs-cli"
+description = "CLI and interactive REPL for mlrs recursive LLM inference"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "mlrs"
+path = "src/main.rs"
+
+[dependencies]
+mlrs-core = { path = "../mlrs-core" }
+mlrs-providers = { path = "../mlrs-providers" }
+anyhow.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap = { version = "4", features = ["derive"] }

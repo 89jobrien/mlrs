@@ -1,0 +1,22 @@
+[workspace]
+members = [
+    "crates/mlrs-core",
+    "crates/mlrs-providers",
+    "crates/mlrs-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Joseph O'Brien"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/89jobrien/mlrs"
+
+[workspace.dependencies]
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1", features = ["derive"] }
