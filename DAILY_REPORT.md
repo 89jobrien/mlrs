@@ -9,13 +9,21 @@ session: workspace health check
 
 **Found 5 warnings (all fixed, commit `ebffaed`):**
 
-| File           | Lint                                                                              | Fix                                                                                                                                                                                                                     |
-| -------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `env.rs:87-90` | `missing_const_for_thread_local` — `RefCell::new(None)` in `thread_local!`        | Changed to `const { RefCell::new(None) }`                                                                                                                                                                               |
-| `rlm.rs:117`   | `redundant_closure` — `\|e\| RlmError::ProviderError(e)`                          | Replaced with `RlmError::ProviderError` (tuple variant as fn)                                                                                                                                                           |
-| `rlm.rs:132`   | `never_loop` — inner retry `loop` always broke on first iteration in all branches | Removed loop; replaced with direct `match`. Added script-error warning to `Continue` branch in outer loop instead. The retry intent is preserved: the outer loop naturally re-calls the model after a script error cell |
-| `rlm.rs:133`   | `needless_borrow` — `&script` passed where `script: &str` already                 | Removed superfluous `&`                                                                                                                                                                                                 |
-| `repl.rs:404`  | `manual_pattern_char_comparison` — `\|c: char\| c == '(' \|\| c == ' '`           | Replaced with `['(', ' ']` array pattern                                                                                                                                                                                |
+- `env.rs:87-90` — `missing_const_for_thread_local`: `RefCell::new(None)` in `thread_local!`
+  → changed to `const { RefCell::new(None) }`
+
+- `rlm.rs:117` — `redundant_closure`: `|e| RlmError::ProviderError(e)`
+  → replaced with `RlmError::ProviderError` directly
+
+- `rlm.rs:132` — `never_loop`: inner retry `loop` broke on first iteration in every branch
+  → removed loop, replaced with direct `match`; script-error warning moved to `Continue`
+  branch of the outer loop (model still self-corrects via the next iteration)
+
+- `rlm.rs:133` — `needless_borrow`: `&script` where `script: &str`
+  → removed superfluous `&`
+
+- `repl.rs:404` — `manual_pattern_char_comparison`: `|c: char| c == '(' || c == ' '`
+  → replaced with `['(', ' ']` array pattern
 
 **Root cause note on `never_loop`:** The original retry loop was architecturally confused
 — it intended to retry script execution on error, but `execute_script` returning an error
@@ -51,20 +59,13 @@ No `.githooks/` directory in this repo. The global hook at
 
 ## 5. Git log review (last 5 commits)
 
-| SHA       | Summary                                          | Flags                                                       |
-| --------- | ------------------------------------------------ | ----------------------------------------------------------- |
-| `3e5cf38` | fix(docs): markdownlint config + plan file fixes | clean                                                       |
-| `ebffaed` | fix(clippy): 5 warnings resolved                 | clean                                                       |
-| `0d4ef25` | docs: handoff + plans + agent loop history fix   | clean — `max_retries_per_cell` field now unused (see below) |
-| `1eedf69` | feat(cli): wire slash REPL                       | clean                                                       |
-| `dbfbf13` | test(core): protocol unit tests                  | clean                                                       |
-
-**Flag — `max_retries_per_cell` field:** The `Rlm` struct still has `pub max_retries_per_cell: usize`
-(set in `new()`, exposed as a builder). With the `never_loop` fix this field is no longer
-read anywhere in the engine. It is kept as a public API field (removing it would be a
-breaking change) but is now dead. A follow-up should either wire it to the outer loop's
-script-error retry count, or remove it in a planned breaking-change commit. This is
-tracked under mlrs-001 scope or as a standalone cleanup.
+| SHA       | Summary                                          | Flags |
+| --------- | ------------------------------------------------ | ----- |
+| `3e5cf38` | fix(docs): markdownlint config + plan file fixes | clean |
+| `ebffaed` | fix(clippy): 5 warnings resolved                 | clean |
+| `0d4ef25` | docs: handoff + plans + agent loop history fix   | clean |
+| `1eedf69` | feat(cli): wire slash REPL                       | clean |
+| `dbfbf13` | test(core): protocol unit tests                  | clean |
 
 ## 6. What was NOT done
 
@@ -76,10 +77,10 @@ tracked under mlrs-001 scope or as a standalone cleanup.
 
 ## Summary
 
-| Check                      | Status              | Commits     |
-| -------------------------- | ------------------- | ----------- |
-| `cargo clippy -D warnings` | 5 warnings → 0      | `ebffaed`   |
-| `cargo test --workspace`   | 2/2 pass            | —           |
-| `markdownlint docs/`       | errors → 0          | `3e5cf38`   |
-| Git hooks dry-run          | pass                | —           |
-| Git log review             | 1 flag (dead field) | noted above |
+| Check                      | Status         | Commits   |
+| -------------------------- | -------------- | --------- |
+| `cargo clippy -D warnings` | 5 warnings → 0 | `ebffaed` |
+| `cargo test --workspace`   | 2/2 pass       | —         |
+| `markdownlint docs/`       | errors → 0     | `3e5cf38` |
+| Git hooks dry-run          | pass           | —         |
+| Git log review             | 1 flag → fixed | `34e1893` |
