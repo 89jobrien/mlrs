@@ -22,11 +22,13 @@ makes an additional inference to reason about them before producing the next act
   1. Add the cell to the notebook as normal.
   2. Make an additional provider call with a `REFLECTION_PROMPT` appended to the
      messages:
-     ```
+
+     ```text
      "Review the output above. Does it make progress toward the query?
       If yes, write 'CONTINUE'. If you have enough to answer, write 'ANSWER: <text>'.
       If the approach is wrong, write 'REPLAN: <new approach>'."
      ```
+
   3. Parse the response:
      - `CONTINUE` → proceed to next iteration normally.
      - `ANSWER: ...` → treat as a `done()` call, return the answer.

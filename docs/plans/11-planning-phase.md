@@ -28,7 +28,7 @@ before acting. This improves coherence on tasks requiring many iterations.
 - Planning call: before iteration 1 (if `initial_plan`) and every `interval` iterations,
   inject a planning prompt:
 
-  ```
+  ```text
   "Before writing your next script, produce a brief numbered plan (3–7 steps) for how
    you will answer the query given what you know so far. Output only the plan, no code."
   ```
@@ -39,7 +39,7 @@ before acting. This improves coherence on tasks requiring many iterations.
 - The current plan is injected into `build_messages` as a system-level context item
   after the system prompt:
 
-  ```
+  ```rust
   Message { role: Role::User, content: format!("Current plan:\n{plan}") }
   Message { role: Role::Assistant, content: "Understood.".into() }
   ```

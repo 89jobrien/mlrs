@@ -20,7 +20,7 @@ architectural improvements.
 
 ## Suggested implementation order
 
-```
+```text
 03 (cancellation) → 07 (truncation) → 01 (compaction) → 04 (events)
 → 02 (streaming) → 08 (rlm_call) → 05 (validation) → 06 (persistence)
 → 09 (retry) → 10 (reflection) → 11 (planning) → 12 (parallel)
