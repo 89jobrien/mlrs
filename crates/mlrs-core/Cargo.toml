@@ -18,6 +18,8 @@ serde.workspace = true
 rhai = { version = "1", features = ["sync"] }
 regex = "1"
 thiserror = "1"
+tokio-util = { version = "0.7", features = ["rt"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
+futures = "0.3"

@@ -16,4 +16,7 @@ pub enum RlmError {
 
     #[error("provider error: {0}")]
     ProviderError(#[source] anyhow::Error),
+
+    #[error("run cancelled")]
+    Cancelled,
 }

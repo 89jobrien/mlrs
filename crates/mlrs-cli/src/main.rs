@@ -2,7 +2,7 @@ mod repl;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use mlrs_core::Rlm;
+use mlrs_core::{CancellationToken, Rlm};
 use mlrs_providers::{AnthropicProvider, OpenAiProvider};
 use std::{path::PathBuf, sync::Arc};
 
@@ -98,8 +98,20 @@ async fn main() -> Result<()> {
             context_file,
         } => {
             let ctx = resolve_context(context, context_file)?;
-            let answer = rlm.run(&query, &ctx).await?;
-            println!("{answer}");
+            let cancel = CancellationToken::new();
+            let cancel2 = cancel.clone();
+            tokio::spawn(async move {
+                tokio::signal::ctrl_c().await.ok();
+                cancel2.cancel();
+            });
+            match rlm.run(&query, &ctx, cancel).await {
+                Ok(answer) => println!("{answer}"),
+                Err(mlrs_core::RlmError::Cancelled) => {
+                    eprintln!("[cancelled]");
+                    std::process::exit(130);
+                }
+                Err(e) => return Err(e.into()),
+            }
         }
         Commands::Interactive => {
             repl::run(rlm)?;

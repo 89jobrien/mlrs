@@ -1,5 +1,6 @@
 use anyhow::Result;
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
 use crate::{
@@ -94,7 +95,16 @@ impl Rlm {
     }
 
     /// Run the RLM loop: execute until `done()` is called or limits are hit.
-    pub async fn run(&self, query: &str, context: &str) -> Result<String, RlmError> {
+    ///
+    /// Pass `CancellationToken::new()` if you don't need cancellation.
+    /// The token is checked between iterations; an in-flight provider call is not
+    /// interrupted mid-request.
+    pub async fn run(
+        &self,
+        query: &str,
+        context: &str,
+        cancel: CancellationToken,
+    ) -> Result<String, RlmError> {
         if self.depth >= self.max_depth {
             return Err(RlmError::MaxDepthExceeded(self.depth));
         }
@@ -105,17 +115,24 @@ impl Rlm {
         let mut consecutive_errors: usize = 0;
 
         loop {
+            if cancel.is_cancelled() {
+                return Err(RlmError::Cancelled);
+            }
+
             if iterations >= self.max_iterations {
                 return Err(RlmError::MaxIterationsExceeded(self.max_iterations));
             }
             iterations += 1;
 
             let messages = self.build_messages(query, &notebook);
-            let script = self
-                .provider
-                .complete(messages)
-                .await
-                .map_err(RlmError::ProviderError)?;
+            let script = tokio::select! {
+                result = self.provider.complete(messages) => {
+                    result.map_err(RlmError::ProviderError)?
+                }
+                _ = cancel.cancelled() => {
+                    return Err(RlmError::Cancelled);
+                }
+            };
 
             let script = extract_script(&script);
 
@@ -204,6 +221,76 @@ impl Rlm {
         }
 
         messages
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    /// A provider that never resolves — useful for testing cancellation.
+    struct HangingProvider;
+
+    #[async_trait::async_trait]
+    impl LlmProvider for HangingProvider {
+        async fn complete(&self, _messages: Vec<Message>) -> anyhow::Result<String> {
+            // Hang forever.
+            futures::future::pending::<()>().await;
+            unreachable!()
+        }
+        fn model_id(&self) -> &str {
+            "hanging"
+        }
+    }
+
+    /// A provider that immediately returns a `done()` script.
+    struct DoneProvider;
+
+    #[async_trait::async_trait]
+    impl LlmProvider for DoneProvider {
+        async fn complete(&self, _messages: Vec<Message>) -> anyhow::Result<String> {
+            Ok(r#"done("the answer")"#.to_string())
+        }
+        fn model_id(&self) -> &str {
+            "done"
+        }
+    }
+
+    #[tokio::test]
+    async fn cancellation_before_first_iteration() {
+        let rlm = Rlm::new(Arc::new(HangingProvider));
+        let cancel = CancellationToken::new();
+        cancel.cancel();
+        let err = rlm.run("q", "", cancel).await.unwrap_err();
+        assert!(
+            matches!(err, RlmError::Cancelled),
+            "expected Cancelled, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn cancellation_during_provider_call() {
+        let rlm = Rlm::new(Arc::new(HangingProvider));
+        let cancel = CancellationToken::new();
+        let cancel2 = cancel.clone();
+        // Cancel after a short delay so the select! fires.
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            cancel2.cancel();
+        });
+        let err = rlm.run("q", "", cancel).await.unwrap_err();
+        assert!(
+            matches!(err, RlmError::Cancelled),
+            "expected Cancelled, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn no_cancellation_completes_normally() {
+        let rlm = Rlm::new(Arc::new(DoneProvider));
+        let answer = rlm.run("q", "", CancellationToken::new()).await.unwrap();
+        assert_eq!(answer, "the answer");
     }
 }
 

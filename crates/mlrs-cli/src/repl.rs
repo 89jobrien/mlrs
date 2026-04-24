@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
+use mlrs_core::CancellationToken;
+
 use anyhow::Result;
 use reedline::{
     Completer, Emacs, Highlighter, Hinter, Prompt, PromptEditMode, PromptHistorySearch,
@@ -240,14 +242,32 @@ impl SlashCommand for RunCmd {
             .unwrap_or(5);
 
         let rlm = Arc::clone(&self.rlm);
-        let answer = tokio::runtime::Handle::current()
-            .block_on(async move {
-                let mut r = rlm.lock().await;
-                r.verbose = verbose;
-                r.max_depth = max_depth;
-                r.run(&query, &context).await
-            })
-            .map_err(|e| ExecutionError::Runner(format!("rlm error: {e}")))?;
+        let cancel = CancellationToken::new();
+        let cancel2 = cancel.clone();
+        // Spawn a task that cancels on Ctrl-C. The task is best-effort;
+        // if the run completes first, the token is simply dropped.
+        tokio::runtime::Handle::current().spawn(async move {
+            tokio::signal::ctrl_c().await.ok();
+            cancel2.cancel();
+        });
+        let result = tokio::runtime::Handle::current().block_on(async move {
+            let mut r = rlm.lock().await;
+            r.verbose = verbose;
+            r.max_depth = max_depth;
+            r.run(&query, &context, cancel).await
+        });
+        let answer = match result {
+            Ok(a) => a,
+            Err(mlrs_core::RlmError::Cancelled) => {
+                eprintln!("\n[cancelled]");
+                return Ok(CommandOutput {
+                    stdout: None,
+                    stderr: Some(b"[cancelled]\n".to_vec()),
+                    success: false,
+                });
+            }
+            Err(e) => return Err(ExecutionError::Runner(format!("rlm error: {e}"))),
+        };
 
         Ok(CommandOutput {
             stdout: Some(format!("{answer}\n").into_bytes()),
