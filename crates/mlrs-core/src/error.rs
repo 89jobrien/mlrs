@@ -11,6 +11,9 @@ pub enum RlmError {
     #[error("script error: {0}")]
     ScriptError(String),
 
+    #[error("max script retries ({0}) exceeded for one cell")]
+    MaxRetriesExceeded(usize),
+
     #[error("provider error: {0}")]
     ProviderError(#[source] anyhow::Error),
 }

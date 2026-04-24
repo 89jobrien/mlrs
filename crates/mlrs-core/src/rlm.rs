@@ -102,6 +102,7 @@ impl Rlm {
         let (engine, mut scope) = build_engine(context.to_string());
         let mut notebook = Notebook::default();
         let mut iterations = 0;
+        let mut consecutive_errors: usize = 0;
 
         loop {
             if iterations >= self.max_iterations {
@@ -148,10 +149,22 @@ impl Rlm {
                     return Ok(answer);
                 }
                 StepResult::Continue(ref output) if output.starts_with("script error:") => {
-                    warn!(depth = self.depth, iteration = iterations, error = %output, "rlm: script error, model will self-correct");
+                    consecutive_errors += 1;
+                    warn!(
+                        depth = self.depth,
+                        iteration = iterations,
+                        consecutive_errors,
+                        max = self.max_retries_per_cell,
+                        error = %output,
+                        "rlm: script error"
+                    );
+                    if consecutive_errors > self.max_retries_per_cell {
+                        return Err(RlmError::MaxRetriesExceeded(self.max_retries_per_cell));
+                    }
                     notebook.push(script.to_string(), output.clone());
                 }
                 StepResult::Continue(output) => {
+                    consecutive_errors = 0;
                     notebook.push(script.to_string(), output);
                 }
             }
