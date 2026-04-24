@@ -114,7 +114,7 @@ impl Rlm {
                 .provider
                 .complete(messages)
                 .await
-                .map_err(|e| RlmError::ProviderError(e))?;
+                .map_err(RlmError::ProviderError)?;
 
             let script = extract_script(&script);
 
@@ -128,22 +128,8 @@ impl Rlm {
                 "rlm: executing cell"
             );
 
-            let mut retries: usize = 0;
-            let step = loop {
-                match execute_script(&engine, &mut scope, &script)
-                    .map_err(|e| RlmError::ScriptError(e.to_string()))?
-                {
-                    StepResult::Continue(out)
-                        if out.starts_with("script error:")
-                            && retries < self.max_retries_per_cell =>
-                    {
-                        retries += 1;
-                        warn!(depth = self.depth, retry = retries, error = %out, "rlm: script error, retrying");
-                        break StepResult::Continue(out);
-                    }
-                    step => break step,
-                }
-            };
+            let step = execute_script(&engine, &mut scope, script)
+                .map_err(|e| RlmError::ScriptError(e.to_string()))?;
 
             if self.verbose {
                 eprintln!(
@@ -160,6 +146,10 @@ impl Rlm {
                 StepResult::Final(answer) => {
                     debug!(depth = self.depth, "rlm: final answer received");
                     return Ok(answer);
+                }
+                StepResult::Continue(ref output) if output.starts_with("script error:") => {
+                    warn!(depth = self.depth, iteration = iterations, error = %output, "rlm: script error, model will self-correct");
+                    notebook.push(script.to_string(), output.clone());
                 }
                 StepResult::Continue(output) => {
                     notebook.push(script.to_string(), output);

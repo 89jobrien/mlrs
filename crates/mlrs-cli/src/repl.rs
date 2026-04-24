@@ -1,15 +1,18 @@
 use std::cell::RefCell;
-use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 
 use anyhow::Result;
+use reedline::{
+    Completer, Emacs, Highlighter, Hinter, Prompt, PromptEditMode, PromptHistorySearch,
+    PromptHistorySearchStatus, Reedline, Signal, Span, StyledText, Suggestion,
+};
 use slash_core::{
     command::{MethodDef, SlashCommand},
     env::SlenvLoader,
-    executor::{CommandOutput, CommandRunner, Execute, ExecutionError, Executor, PipeValue},
+    executor::{CommandOutput, Execute, ExecutionError, Executor, PipeValue},
     registry::CommandRegistry,
 };
-use slash_lang::parser::ast::{Arg, Command};
+use slash_lang::parser::ast::Arg;
 
 use mlrs_core::Rlm;
 
@@ -255,6 +258,164 @@ impl SlashCommand for RunCmd {
 }
 
 // ---------------------------------------------------------------------------
+// Slash command metadata — single source of truth for completion / hints
+// ---------------------------------------------------------------------------
+
+const COMMANDS: &[(&str, &str)] = &[
+    ("/query(<text>)", "Set the query to run"),
+    ("/context(<text>)", "Set context inline"),
+    ("/context-file(<path>)", "Load context from a file"),
+    ("/run", "Execute the RLM with current query + context"),
+    ("/status", "Show current query and context"),
+    ("/clear", "Reset query and context"),
+    ("/help", "Show available commands"),
+    ("/quit", "Exit the REPL"),
+];
+
+// ---------------------------------------------------------------------------
+// Prompt
+// ---------------------------------------------------------------------------
+
+struct MlrsPrompt;
+
+impl Prompt for MlrsPrompt {
+    fn render_prompt_left(&self) -> std::borrow::Cow<'_, str> {
+        "mlrs> ".into()
+    }
+    fn render_prompt_right(&self) -> std::borrow::Cow<'_, str> {
+        "".into()
+    }
+    fn render_prompt_indicator(&self, _mode: PromptEditMode) -> std::borrow::Cow<'_, str> {
+        "".into()
+    }
+    fn render_prompt_multiline_indicator(&self) -> std::borrow::Cow<'_, str> {
+        "::: ".into()
+    }
+    fn render_prompt_history_search_indicator(
+        &self,
+        history_search: PromptHistorySearch,
+    ) -> std::borrow::Cow<'_, str> {
+        let indicator = match history_search.status {
+            PromptHistorySearchStatus::Passing => "",
+            PromptHistorySearchStatus::Failing => "failing ",
+        };
+        format!("({}reverse-search: {}) ", indicator, history_search.term).into()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Completer — fires on any input starting with '/'
+// ---------------------------------------------------------------------------
+
+struct SlashCompleter;
+
+impl Completer for SlashCompleter {
+    fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
+        if !line.starts_with('/') {
+            return vec![];
+        }
+        // Match against the bare command name (strip args signature for matching)
+        let prefix = &line[..pos];
+        COMMANDS
+            .iter()
+            .filter(|(cmd, _)| {
+                // Strip the args portion for prefix matching: "/query(<text>)" -> "/query"
+                let bare = cmd.split('(').next().unwrap_or(cmd);
+                bare.starts_with(prefix) || cmd.starts_with(prefix)
+            })
+            .map(|(cmd, desc)| {
+                // Complete to the bare command name (without arg signature)
+                let bare = cmd.split('(').next().unwrap_or(cmd).to_string();
+                Suggestion {
+                    value: bare,
+                    display_override: None,
+                    description: Some(desc.to_string()),
+                    style: None,
+                    extra: None,
+                    span: Span::new(0, pos),
+                    append_whitespace: false,
+                    match_indices: None,
+                }
+            })
+            .collect()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Hinter — inline fish-style ghost text
+// ---------------------------------------------------------------------------
+
+struct SlashHinter {
+    current_hint: String,
+}
+
+impl Hinter for SlashHinter {
+    fn handle(
+        &mut self,
+        line: &str,
+        _pos: usize,
+        _history: &dyn reedline::History,
+        use_ansi_coloring: bool,
+        _cwd: &str,
+    ) -> String {
+        self.current_hint = String::new();
+        if !line.starts_with('/') || line.len() < 2 {
+            return String::new();
+        }
+        for (cmd, _) in COMMANDS {
+            let bare = cmd.split('(').next().unwrap_or(cmd);
+            if bare.starts_with(line) && bare.len() > line.len() {
+                let hint = bare[line.len()..].to_string();
+                self.current_hint = hint.clone();
+                if use_ansi_coloring {
+                    return format!("\x1b[2m{hint}\x1b[0m");
+                }
+                return hint;
+            }
+        }
+        String::new()
+    }
+
+    fn complete_hint(&self) -> String {
+        self.current_hint.clone()
+    }
+
+    fn next_hint_token(&self) -> String {
+        // Return up to the first word boundary in the hint
+        self.current_hint
+            .split_once(|c: char| c == '(' || c.is_whitespace())
+            .map(|(token, _)| token.to_string())
+            .unwrap_or_else(|| self.current_hint.clone())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Highlighter — colour the command name vs arguments
+// ---------------------------------------------------------------------------
+
+struct SlashHighlighter;
+
+impl Highlighter for SlashHighlighter {
+    fn highlight(&self, line: &str, _cursor: usize) -> StyledText {
+        use nu_ansi_term::{Color, Style};
+        let mut styled = StyledText::new();
+        if line.starts_with('/') {
+            let split_at = line.find(['(', ' ']).unwrap_or(line.len());
+            styled.push((
+                Style::new().bold().fg(Color::Blue),
+                line[..split_at].to_string(),
+            ));
+            if split_at < line.len() {
+                styled.push((Style::new(), line[split_at..].to_string()));
+            }
+        } else {
+            styled.push((Style::new(), line.to_string()));
+        }
+        styled
+    }
+}
+
+// ---------------------------------------------------------------------------
 // REPL loop
 // ---------------------------------------------------------------------------
 
@@ -270,34 +431,51 @@ pub fn run(rlm: Rlm) -> Result<()> {
     registry.register(Box::new(RunCmd { rlm }));
     let executor = Executor::new(registry);
 
-    let stdin = io::stdin();
-    let stdout = io::stdout();
+    let mut editor = Reedline::create()
+        .with_completer(Box::new(SlashCompleter))
+        .with_hinter(Box::new(SlashHinter {
+            current_hint: String::new(),
+        }))
+        .with_highlighter(Box::new(SlashHighlighter))
+        .with_partial_completions(true)
+        .with_edit_mode(Box::new(Emacs::default()));
+
+    let prompt = MlrsPrompt;
 
     println!("mlrs interactive REPL — type /help for commands, /quit to exit");
+    println!("Tip: press Tab after '/' to see available commands.");
 
     loop {
-        print!("mlrs> ");
-        stdout.lock().flush()?;
-
-        let mut line = String::new();
-        if stdin.lock().read_line(&mut line)? == 0 {
-            break; // EOF
-        }
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        if line == "/quit" || line == "/exit" {
-            break;
-        }
-
-        match slash_lang::parser::parse(line) {
-            Err(e) => eprintln!("parse error: {e}"),
-            Ok(prog) => match executor.execute(&prog) {
-                Err(e) => eprintln!("error: {e:?}"),
-                Ok(Some(PipeValue::Bytes(b))) => print!("{}", String::from_utf8_lossy(&b)),
-                Ok(_) => {}
-            },
+        match editor.read_line(&prompt) {
+            Ok(Signal::Success(line)) => {
+                let line = line.trim();
+                if line.is_empty() {
+                    continue;
+                }
+                if line == "/quit" || line == "/exit" {
+                    break;
+                }
+                match slash_lang::parser::parse(line) {
+                    Err(e) => eprintln!("parse error: {e}"),
+                    Ok(prog) => match executor.execute(&prog) {
+                        Err(e) => eprintln!("error: {e:?}"),
+                        Ok(Some(PipeValue::Bytes(b))) => {
+                            print!("{}", String::from_utf8_lossy(&b))
+                        }
+                        Ok(_) => {}
+                    },
+                }
+            }
+            Ok(Signal::CtrlC) => {
+                eprintln!("^C");
+                continue;
+            }
+            Ok(Signal::CtrlD) => break,
+            Ok(_) => continue,
+            Err(e) => {
+                eprintln!("readline error: {e}");
+                break;
+            }
         }
     }
 

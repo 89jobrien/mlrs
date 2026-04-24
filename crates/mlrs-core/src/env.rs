@@ -85,9 +85,9 @@ pub fn build_engine(ctx: String) -> (Engine, Scope<'static>) {
 
 thread_local! {
     static PRINT_BUF: std::cell::RefCell<Option<std::sync::Arc<std::sync::Mutex<Vec<String>>>>> =
-        std::cell::RefCell::new(None);
+        const { std::cell::RefCell::new(None) };
     static FINAL_BUF: std::cell::RefCell<Option<std::sync::Arc<std::sync::Mutex<Option<String>>>>> =
-        std::cell::RefCell::new(None);
+        const { std::cell::RefCell::new(None) };
 }
 
 /// Execute a Rhai script and return the `StepResult`.
