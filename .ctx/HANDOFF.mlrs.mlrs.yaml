@@ -1,5 +1,5 @@
 project: mlrs
-updated: "20260424::010740"
+updated: "20260424::012630"
 
 items:
   - id: mlrs-001
@@ -74,10 +74,27 @@ items:
       - docs/plans/
 
 log:
+  - date: "20260424::012630"
+    session: 2
+    summary: "Workspace health check — fixed 5 clippy warnings, markdownlint config, wired max_retries_per_cell, added DAILY_REPORT"
+    commits:
+      - sha: fd51919
+        branch: main
+      - sha: 34e1893
+        branch: main
+      - sha: 5672d5b
+        branch: main
+      - sha: 3e5cf38
+        branch: main
+      - sha: ebffaed
+        branch: main
+
   - date: "20260424::010740"
     session: 1
     summary: "Initial session — scaffolded workspace, fixed agent loop message history, wrote 12 feature plans"
     commits:
+      - sha: 0d4ef25
+        branch: main
       - sha: 1eedf69
         branch: main
       - sha: dbfbf13
