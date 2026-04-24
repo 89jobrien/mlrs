@@ -1,0 +1,88 @@
+project: mlrs
+updated: "20260424::010740"
+
+items:
+  - id: mlrs-001
+    title: "Implement cancellation (plan 03)"
+    description: >
+      Add CancellationToken to Rlm::run so the REPL and CLI can interrupt a running
+      query with Ctrl-C. Low effort, high safety value — unblocks clean testing of
+      all subsequent features.
+    priority: P1
+    status: open
+    files:
+      - crates/mlrs-core/src/rlm.rs
+      - crates/mlrs-cli/src/repl.rs
+      - crates/mlrs-cli/src/main.rs
+
+  - id: mlrs-002
+    title: "Per-cell output truncation (plan 07)"
+    description: >
+      Truncate large cell outputs before storing in the notebook to prevent accidental
+      context window blowup during live provider testing. Default 8 KB cap with
+      TailDrop strategy.
+    priority: P1
+    status: open
+    files:
+      - crates/mlrs-core/src/env.rs
+      - crates/mlrs-core/src/rlm.rs
+      - crates/mlrs-core/src/protocol.rs
+
+  - id: mlrs-003
+    title: "Context window management / compaction (plan 01)"
+    description: >
+      Token estimation, per-notebook budget check, and mid-run summarization pass when
+      the notebook approaches the model's context window limit.
+    priority: P1
+    status: open
+    files:
+      - crates/mlrs-core/src/rlm.rs
+      - crates/mlrs-core/src/protocol.rs
+
+  - id: mlrs-004
+    title: "Structured step events (plan 04)"
+    description: >
+      StepEvent enum + run_with_events, replacing the verbose eprintln flag. Enables
+      REPL progress rendering and is a prerequisite for streaming.
+    priority: P2
+    status: open
+    files:
+      - crates/mlrs-core/src/protocol.rs
+      - crates/mlrs-core/src/rlm.rs
+      - crates/mlrs-cli/src/repl.rs
+
+  - id: mlrs-005
+    title: "Register rlm_call Rhai function (plan 08)"
+    description: >
+      The system prompt documents rlm_call(query, ctx) but it is not registered in
+      env.rs. Fix the documentation lie — implement or remove.
+    priority: P2
+    status: open
+    files:
+      - crates/mlrs-core/src/env.rs
+      - crates/mlrs-core/src/rlm.rs
+
+  - id: mlrs-006
+    title: "Remaining feature plans (05, 06, 09–12)"
+    description: >
+      Plans for final-answer validation, notebook persistence, provider retry/backoff,
+      reflection step, planning phase, and parallel tool execution. All documented in
+      docs/plans/. Not started.
+    priority: P2
+    status: open
+    files:
+      - docs/plans/
+
+log:
+  - date: "20260424::010740"
+    session: 1
+    summary: "Initial session — scaffolded workspace, fixed agent loop message history, wrote 12 feature plans"
+    commits:
+      - sha: 1eedf69
+        branch: main
+      - sha: dbfbf13
+        branch: main
+      - sha: a8e47b8
+        branch: main
+      - sha: 5414887
+        branch: main

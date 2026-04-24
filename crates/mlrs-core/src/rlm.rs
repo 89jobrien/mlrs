@@ -180,11 +180,18 @@ impl Rlm {
             },
         ];
 
-        if !notebook.cells.is_empty() {
+        for cell in &notebook.cells {
             messages.push(Message {
                 role: Role::Assistant,
-                content: notebook.as_history(),
+                content: cell.script.clone(),
             });
+            messages.push(Message {
+                role: Role::User,
+                content: cell.output.clone(),
+            });
+        }
+
+        if !notebook.cells.is_empty() {
             messages.push(Message {
                 role: Role::User,
                 content:
