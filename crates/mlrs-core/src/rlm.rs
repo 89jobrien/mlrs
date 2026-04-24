@@ -6,7 +6,7 @@ use tracing::{debug, warn};
 use crate::{
     env::{build_engine, execute_script},
     error::RlmError,
-    protocol::{Notebook, StepResult},
+    protocol::{truncate_output, Notebook, StepResult, TruncationPolicy},
 };
 
 /// The LLM provider abstraction — implemented in `mlrs-providers`.
@@ -65,6 +65,7 @@ pub struct Rlm {
     pub max_iterations: usize,
     pub max_retries_per_cell: usize,
     pub verbose: bool,
+    pub truncation: TruncationPolicy,
 }
 
 impl Rlm {
@@ -76,6 +77,7 @@ impl Rlm {
             max_iterations: 20,
             max_retries_per_cell: 3,
             verbose: false,
+            truncation: TruncationPolicy::default(),
         }
     }
 
@@ -91,6 +93,11 @@ impl Rlm {
 
     pub fn with_verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
+        self
+    }
+
+    pub fn with_truncation_policy(mut self, policy: TruncationPolicy) -> Self {
+        self.truncation = policy;
         self
     }
 
@@ -178,11 +185,17 @@ impl Rlm {
                     if consecutive_errors > self.max_retries_per_cell {
                         return Err(RlmError::MaxRetriesExceeded(self.max_retries_per_cell));
                     }
-                    notebook.push(script.to_string(), output.clone());
+                    notebook.push(
+                        script.to_string(),
+                        truncate_output(output, &self.truncation),
+                    );
                 }
                 StepResult::Continue(output) => {
                     consecutive_errors = 0;
-                    notebook.push(script.to_string(), output);
+                    notebook.push(
+                        script.to_string(),
+                        truncate_output(&output, &self.truncation),
+                    );
                 }
             }
         }
