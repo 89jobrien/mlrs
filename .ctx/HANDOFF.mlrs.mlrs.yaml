@@ -78,37 +78,37 @@ log:
     session: 3
     summary: "Added gha-gen design spec and implementation plan — 2 commits documenting GitHub Actions code generator for mlrs workflows"
     commits:
-      - sha: e612c99
+      - sha: "e612c99"
         branch: main
-      - sha: c676641
+      - sha: "c676641"
         branch: main
 
   - date: "20260424::012630"
     session: 2
     summary: "Workspace health check — fixed 5 clippy warnings, markdownlint config, wired max_retries_per_cell, added DAILY_REPORT"
     commits:
-      - sha: fd51919
+      - sha: "fd51919"
         branch: main
-      - sha: 34e1893
+      - sha: "34e1893"
         branch: main
-      - sha: 5672d5b
+      - sha: "5672d5b"
         branch: main
-      - sha: 3e5cf38
+      - sha: "3e5cf38"
         branch: main
-      - sha: ebffaed
+      - sha: "ebffaed"
         branch: main
 
   - date: "20260424::010740"
     session: 1
     summary: "Initial session — scaffolded workspace, fixed agent loop message history, wrote 12 feature plans"
     commits:
-      - sha: 0d4ef25
+      - sha: "0d4ef25"
         branch: main
-      - sha: 1eedf69
+      - sha: "1eedf69"
         branch: main
-      - sha: dbfbf13
+      - sha: "dbfbf13"
         branch: main
-      - sha: a8e47b8
+      - sha: "a8e47b8"
         branch: main
-      - sha: 5414887
+      - sha: "5414887"
         branch: main
