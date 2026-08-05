@@ -1,7 +1,7 @@
 mod repl;
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use mlrs_core::{CancellationToken, Rlm};
 use mlrs_providers::{AnthropicProvider, OpenAiProvider};
 use std::{path::PathBuf, sync::Arc};
@@ -47,6 +47,16 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    if std::env::args().nth(1).as_deref() == Some("completions") {
+        clap_complete::generate(
+            clap_complete_nushell::Nushell,
+            &mut Cli::command(),
+            "mlrs",
+            &mut std::io::stdout(),
+        );
+        return Ok(());
+    }
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()

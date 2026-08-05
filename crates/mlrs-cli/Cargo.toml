@@ -19,6 +19,8 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+clap_complete_nushell = "4"
 reedline = "0.47"
 nu-ansi-term = "0.50"
 slash-core = "0.1.0"
