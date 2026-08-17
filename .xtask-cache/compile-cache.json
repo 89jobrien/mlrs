@@ -1,0 +1,33 @@
+{
+  "cargo_lock_hash": "edf0d9a915cf73cd607b9d684adf0825c6a17b11025e7a2765838c43c9ee9600",
+  "crates": {
+    "mlrs-cli": {
+      "hash": "f269dbcf8c5e839501b7afd481285ed2ca1b83ba4fb59ce3cb743aad3b6b62a5",
+      "modules": {
+        "./crates/mlrs-cli/Cargo.toml": "084da6fc77cbcc8500c411fc6740ef792fc778b0e23cf166d9dda86226f10e94",
+        "./crates/mlrs-cli/src/main.rs": "e417d82c54de724d549cdc7286a73502b57d251a5747134bdb8b4fbf0bfbaad5",
+        "./crates/mlrs-cli/src/repl.rs": "a5ba6ca194ef935b06a9e37d0003dabf791b5ce3d62045eb7c94e8af0170b4dd"
+      }
+    },
+    "mlrs-core": {
+      "hash": "cd3bb6b646b151d978bd86b880a10825e00fab5b25452ea958f4ae1e67b11ea7",
+      "modules": {
+        "./crates/mlrs-core/Cargo.toml": "32e7a686b9c84ff93f3bf3dfaa9800eac74162e5ed2ac01c965e8ef2e547a0c5",
+        "./crates/mlrs-core/src/env.rs": "28c60c88bf005e66cc841885a8041342a0d17d2c2674556352681bb94b9bb26a",
+        "./crates/mlrs-core/src/error.rs": "991aabed8081123944dba5e0877eefabad690a0e2efb1bdbe0fe5be97a9f35ae",
+        "./crates/mlrs-core/src/lib.rs": "c6834684e7f399839ac424927eb3b537f77f64093d575af012df613b840aba62",
+        "./crates/mlrs-core/src/protocol.rs": "9aea851382917b6ce09ecb7341a7e8100a4b48372e599e2eb43e25cdfb8a9cf9",
+        "./crates/mlrs-core/src/rlm.rs": "9f9eadbbcc9c5837f2cafcf7d065ee437a04db678603c58ae17c2608a747953a"
+      }
+    },
+    "mlrs-providers": {
+      "hash": "8438299097f498878601403c069b1123309ae4b0a9594db838607d01bd8d44e8",
+      "modules": {
+        "./crates/mlrs-providers/Cargo.toml": "2bd3ca775189ce84580a35c5db418fef1de82fe90ec09f3706c44e908761d8f4",
+        "./crates/mlrs-providers/src/anthropic.rs": "8d0d2f9f8dbbb40c622894c941443876e6f31798d802bf806e3cb559aedc6727",
+        "./crates/mlrs-providers/src/lib.rs": "56b77baf1fc7f1ca117cfe9bab3a4b5edc3fef916514d8d796cc533affb22f67",
+        "./crates/mlrs-providers/src/openai.rs": "674a9f1e873967ee780e6e390de03c00846a7f13e838dfe1a646e9b902611329"
+      }
+    }
+  }
+}

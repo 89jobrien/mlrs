@@ -1,6 +1,6 @@
 ---
 title: Per-Cell Output Truncation
-status: open
+status: done
 priority: medium
 ---
 

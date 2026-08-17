@@ -97,6 +97,19 @@ fn ceil_char_boundary(s: &str, index: usize) -> usize {
         .unwrap_or(s.len())
 }
 
+// ---------------------------------------------------------------------------
+// Token estimation
+// ---------------------------------------------------------------------------
+
+/// Character-based token estimate (~4 bytes per token, rounded up).
+///
+/// Deliberately crude: it only needs to be accurate enough to trigger
+/// notebook compaction well before the provider's context window overflows,
+/// without pulling in a tokenizer dependency.
+pub fn approx_token_count(text: &str) -> usize {
+    text.len().div_ceil(4)
+}
+
 /// The result of executing one Rhai cell in the RLM loop.
 #[derive(Debug, Clone)]
 pub enum StepResult {
@@ -122,6 +135,14 @@ pub struct Notebook {
 impl Notebook {
     pub fn push(&mut self, script: String, output: String) {
         self.cells.push(Cell { script, output });
+    }
+
+    /// Estimated token footprint of the whole notebook (scripts + outputs).
+    pub fn token_estimate(&self) -> usize {
+        self.cells
+            .iter()
+            .map(|c| approx_token_count(&c.script) + approx_token_count(&c.output))
+            .sum()
     }
 
     /// Render cells as a message history string for the LLM.
@@ -208,6 +229,25 @@ mod tests {
         // floor_char_boundary(4, 2) = 1 (only 'a' fits cleanly)
         assert!(out.starts_with('a'), "got: {out}");
         assert!(!out.contains('\u{FFFD}'), "got replacement char: {out}");
+    }
+
+    // --- token estimation ---
+
+    #[test]
+    fn approx_token_count_rounds_up() {
+        assert_eq!(approx_token_count(""), 0);
+        assert_eq!(approx_token_count("abc"), 1);
+        assert_eq!(approx_token_count("abcd"), 1);
+        assert_eq!(approx_token_count("abcde"), 2);
+    }
+
+    #[test]
+    fn notebook_token_estimate_sums_scripts_and_outputs() {
+        let mut nb = Notebook::default();
+        assert_eq!(nb.token_estimate(), 0);
+        nb.push("abcd".into(), "efgh".into()); // 1 + 1
+        nb.push("x".into(), "y".into()); // 1 + 1
+        assert_eq!(nb.token_estimate(), 4);
     }
 
     // --- notebook ---

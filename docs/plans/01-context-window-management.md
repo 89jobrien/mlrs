@@ -1,6 +1,6 @@
 ---
 title: Context Window Management
-status: open
+status: done
 priority: high
 ---
 
@@ -35,3 +35,14 @@ exceed the provider's context window, producing a provider error with no recover
 - Compact prompt lives in `crates/mlrs-core/src/templates/compact_prompt.md`.
 - The summarization call does NOT count against `max_iterations`.
 - Expose `compaction_triggered: bool` in a future step-event type (plan 04).
+
+## Delivered (2026-08-17)
+
+- `approx_token_count` + `Notebook::token_estimate` in mlrs-core.
+- Compaction pass in `Rlm::run` via `COMPACT_PROMPT` (templates/compact_prompt.md);
+  does not count against max_iterations; respects cancellation; requires >= 2 cells
+  so a compacted single-cell notebook never re-compacts.
+- `with_compaction_threshold`; default is the fixed constant
+  `DEFAULT_COMPACTION_THRESHOLD` (102,400 = 80% of 128k) rather than a per-model
+  window registry — no such registry exists yet.
+- Per-cell truncation was delivered separately by plan 07.

@@ -57,6 +57,13 @@ Rules:
 - You may call rlm_call(query, ctx_fragment) to recursively process a sub-context.
 "#;
 
+/// Prompt for the notebook-compaction summarization pass.
+const COMPACT_PROMPT: &str = include_str!("templates/compact_prompt.md");
+
+/// Default compaction trigger: 80% of a 128k-token context window, the
+/// smallest window among the providers mlrs targets.
+pub const DEFAULT_COMPACTION_THRESHOLD: usize = 102_400;
+
 /// Core RLM engine.
 pub struct Rlm {
     provider: Arc<dyn LlmProvider>,
@@ -66,6 +73,9 @@ pub struct Rlm {
     pub max_retries_per_cell: usize,
     pub verbose: bool,
     pub truncation: TruncationPolicy,
+    /// Estimated-token threshold above which the notebook is summarized
+    /// into a single synthetic cell before the next iteration.
+    pub compaction_threshold: usize,
 }
 
 impl Rlm {
@@ -78,6 +88,7 @@ impl Rlm {
             max_retries_per_cell: 3,
             verbose: false,
             truncation: TruncationPolicy::default(),
+            compaction_threshold: DEFAULT_COMPACTION_THRESHOLD,
         }
     }
 
@@ -98,6 +109,12 @@ impl Rlm {
 
     pub fn with_truncation_policy(mut self, policy: TruncationPolicy) -> Self {
         self.truncation = policy;
+        self
+    }
+
+    /// Set the estimated-token threshold that triggers notebook compaction.
+    pub fn with_compaction_threshold(mut self, threshold: usize) -> Self {
+        self.compaction_threshold = threshold;
         self
     }
 
@@ -124,6 +141,14 @@ impl Rlm {
         loop {
             if cancel.is_cancelled() {
                 return Err(RlmError::Cancelled);
+            }
+
+            // Compact the notebook when its estimated token footprint would
+            // crowd out the context window. Requires ≥2 cells so an
+            // already-compacted (single-cell) notebook is never re-compacted
+            // in a loop. Does not count against max_iterations.
+            if notebook.cells.len() >= 2 && notebook.token_estimate() > self.compaction_threshold {
+                self.compact(&mut notebook, &cancel).await?;
             }
 
             if iterations >= self.max_iterations {
@@ -199,6 +224,61 @@ impl Rlm {
                 }
             }
         }
+    }
+
+    /// Summarize the notebook into a single synthetic cell via the provider.
+    ///
+    /// Reuses `LlmProvider::complete` — the summarization request is a
+    /// normal completion with `COMPACT_PROMPT` as the system message and the
+    /// rendered notebook history as the user message. Respects cancellation
+    /// the same way the main loop does.
+    async fn compact(
+        &self,
+        notebook: &mut Notebook,
+        cancel: &CancellationToken,
+    ) -> Result<(), RlmError> {
+        let estimate = notebook.token_estimate();
+        let messages = vec![
+            Message {
+                role: Role::System,
+                content: COMPACT_PROMPT.to_string(),
+            },
+            Message {
+                role: Role::User,
+                content: notebook.as_history(),
+            },
+        ];
+
+        let summary = tokio::select! {
+            result = self.provider.complete(messages) => {
+                result.map_err(RlmError::ProviderError)?
+            }
+            _ = cancel.cancelled() => {
+                return Err(RlmError::Cancelled);
+            }
+        };
+
+        let dropped = notebook.cells.len();
+        debug!(
+            depth = self.depth,
+            cells = dropped,
+            token_estimate = estimate,
+            threshold = self.compaction_threshold,
+            "rlm: compacted notebook"
+        );
+        if self.verbose {
+            eprintln!(
+                "[depth={}] ~~ compacted {dropped} cells (~{estimate} tokens)",
+                self.depth
+            );
+        }
+
+        notebook.cells.clear();
+        notebook.push(
+            "// [notebook compacted]".to_string(),
+            format!("[Summary of {dropped} earlier cells]\n{summary}"),
+        );
+        Ok(())
     }
 
     fn build_messages(&self, query: &str, notebook: &Notebook) -> Vec<Message> {
@@ -304,6 +384,93 @@ mod tests {
         let rlm = Rlm::new(Arc::new(DoneProvider));
         let answer = rlm.run("q", "", CancellationToken::new()).await.unwrap();
         assert_eq!(answer, "the answer");
+    }
+
+    /// Replays a fixed list of responses and records every request's
+    /// system-message head, so tests can see whether a compaction request
+    /// (COMPACT_PROMPT) was issued and in what order.
+    struct ScriptedProvider {
+        responses: Vec<&'static str>,
+        calls: std::sync::Mutex<Vec<String>>,
+    }
+
+    impl ScriptedProvider {
+        fn new(responses: Vec<&'static str>) -> Self {
+            Self {
+                responses,
+                calls: std::sync::Mutex::new(Vec::new()),
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl LlmProvider for ScriptedProvider {
+        async fn complete(&self, messages: Vec<Message>) -> anyhow::Result<String> {
+            let mut calls = self.calls.lock().unwrap();
+            let idx = calls.len();
+            calls.push(messages[0].content.clone());
+            Ok(self
+                .responses
+                .get(idx)
+                .unwrap_or(&r#"done("fallback")"#)
+                .to_string())
+        }
+        fn model_id(&self) -> &str {
+            "scripted"
+        }
+    }
+
+    #[tokio::test]
+    async fn compaction_triggers_above_threshold_and_replaces_history() {
+        let provider = Arc::new(ScriptedProvider::new(vec![
+            r#""cell-one-output""#, // cell 1
+            r#""cell-two-output""#, // cell 2
+            "COMPACT-SUMMARY",      // compaction pass (not an iteration)
+            r#"done("fin")"#,       // final
+        ]));
+        let rlm =
+            Rlm::new(Arc::clone(&provider) as Arc<dyn LlmProvider>).with_compaction_threshold(1); // force compaction once ≥2 cells exist
+        let answer = rlm.run("q", "", CancellationToken::new()).await.unwrap();
+        assert_eq!(answer, "fin");
+
+        let calls = provider.calls.lock().unwrap();
+        assert_eq!(calls.len(), 4, "expected 4 provider calls, got {calls:?}");
+        // Calls 1, 2, 4 are normal loop turns; call 3 is the compaction pass.
+        assert!(
+            calls[2].starts_with(COMPACT_PROMPT.lines().next().unwrap()),
+            "third call should be the compaction request, got: {}",
+            &calls[2][..calls[2].len().min(80)],
+        );
+        assert_eq!(calls[3], SYSTEM_PROMPT, "loop resumes with normal prompt");
+    }
+
+    #[tokio::test]
+    async fn no_compaction_below_threshold() {
+        let provider = Arc::new(ScriptedProvider::new(vec![r#""small""#, r#"done("fin")"#]));
+        let rlm = Rlm::new(Arc::clone(&provider) as Arc<dyn LlmProvider>);
+        let answer = rlm.run("q", "", CancellationToken::new()).await.unwrap();
+        assert_eq!(answer, "fin");
+        let calls = provider.calls.lock().unwrap();
+        assert!(
+            calls.iter().all(|c| c == SYSTEM_PROMPT),
+            "no compaction request expected, got {calls:?}",
+        );
+    }
+
+    #[tokio::test]
+    async fn single_cell_notebook_is_never_compacted() {
+        // Threshold of 0 would trip on any content, but a 1-cell notebook
+        // must not be re-compacted — that would loop on its own summary.
+        let provider = Arc::new(ScriptedProvider::new(vec![
+            r#""only-cell""#,
+            r#"done("fin")"#,
+        ]));
+        let rlm =
+            Rlm::new(Arc::clone(&provider) as Arc<dyn LlmProvider>).with_compaction_threshold(0);
+        let answer = rlm.run("q", "", CancellationToken::new()).await.unwrap();
+        assert_eq!(answer, "fin");
+        let calls = provider.calls.lock().unwrap();
+        assert_eq!(calls.len(), 2, "no compaction call expected, got {calls:?}");
     }
 }
 

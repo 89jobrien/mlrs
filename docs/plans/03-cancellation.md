@@ -1,6 +1,6 @@
 ---
 title: Cancellation
-status: open
+status: done
 priority: high
 ---
 
