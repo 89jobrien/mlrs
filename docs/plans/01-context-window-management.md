@@ -4,15 +4,15 @@ status: done
 priority: high
 ---
 
-# Context Window Management
+## Context Window Management
 
-## Problem
+### Problem
 
 mlrs has no token counting, no history summarization, and no truncation policy. At
 `max_iterations=20` with large contexts, the accumulated notebook history will silently
 exceed the provider's context window, producing a provider error with no recovery path.
 
-## Deliverables
+### Deliverables
 
 - Token estimation utility (`approx_token_count(text: &str) -> usize`) — character-based
   heuristic (~4 chars/token) sufficient for triggering compaction; no hard dependency on a
@@ -28,7 +28,7 @@ exceed the provider's context window, producing a provider error with no recover
 - Per-cell output truncation: if a single cell output exceeds `max_cell_output_bytes`
   (default 8 KB), truncate with a `[truncated — N bytes omitted]` suffix before storing.
 
-## Design notes
+### Design notes
 
 - Keep compaction in `mlrs-core` — it is engine logic, not provider logic.
 - Summarization reuses the existing `LlmProvider::complete` — no new trait method needed.
@@ -36,7 +36,7 @@ exceed the provider's context window, producing a provider error with no recover
 - The summarization call does NOT count against `max_iterations`.
 - Expose `compaction_triggered: bool` in a future step-event type (plan 04).
 
-## Delivered (2026-08-17)
+### Delivered (2026-08-17)
 
 - `approx_token_count` + `Notebook::token_estimate` in mlrs-core.
 - Compaction pass in `Rlm::run` via `COMPACT_PROMPT` (templates/compact_prompt.md);

@@ -1,3 +1,5 @@
+//! Parses CLI options and runs one-shot or interactive RLM queries.
+
 mod repl;
 
 use anyhow::{Context, Result};

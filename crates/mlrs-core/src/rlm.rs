@@ -1,3 +1,5 @@
+//! Orchestrates provider completions, Rhai execution, retries, and notebook compaction.
+
 use anyhow::Result;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
@@ -12,7 +14,9 @@ use crate::{
 /// The LLM provider abstraction — implemented in `mlrs-providers`.
 #[async_trait::async_trait]
 pub trait LlmProvider: Send + Sync {
+    /// Requests the provider's next completion for the supplied conversation.
     async fn complete(&self, messages: Vec<Message>) -> Result<String>;
+    /// Returns the model identifier used for completions.
     fn model_id(&self) -> &str;
 }
 
@@ -79,6 +83,7 @@ pub struct Rlm {
 }
 
 impl Rlm {
+    /// Creates an engine with default depth, retry, truncation, and compaction limits.
     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
         Self {
             provider,
@@ -92,21 +97,25 @@ impl Rlm {
         }
     }
 
+    /// Sets the recursion depth of this engine instance.
     pub fn with_depth(mut self, depth: usize) -> Self {
         self.depth = depth;
         self
     }
 
+    /// Sets the maximum permitted recursion depth.
     pub fn with_max_depth(mut self, max_depth: usize) -> Self {
         self.max_depth = max_depth;
         self
     }
 
+    /// Enables or disables cell tracing on standard error.
     pub fn with_verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
         self
     }
 
+    /// Sets how notebook cell outputs are truncated before storage.
     pub fn with_truncation_policy(mut self, policy: TruncationPolicy) -> Self {
         self.truncation = policy;
         self
@@ -426,7 +435,7 @@ mod tests {
             r#""cell-one-output""#, // cell 1
             r#""cell-two-output""#, // cell 2
             "COMPACT-SUMMARY",      // compaction pass (not an iteration)
-            r#"done("fin")"#,       // final
+            r#"done("fin")"#,       // final loop response
         ]));
         let rlm =
             Rlm::new(Arc::clone(&provider) as Arc<dyn LlmProvider>).with_compaction_threshold(1); // force compaction once ≥2 cells exist

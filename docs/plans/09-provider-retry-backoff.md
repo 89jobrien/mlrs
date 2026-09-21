@@ -4,15 +4,15 @@ status: open
 priority: low
 ---
 
-# Provider Retry with Backoff
+## Provider Retry with Backoff
 
-## Problem
+### Problem
 
 All provider errors surface as `RlmError::ProviderError` with no distinction between
 transient failures (rate limits, 429, 503, network blip) and permanent ones (bad API
 key, invalid model, 400). Transient errors abort the entire run unnecessarily.
 
-## Deliverables
+### Deliverables
 
 - `ProviderError` enum replacing the current `anyhow::Error` in the trait return type:
 
@@ -44,7 +44,7 @@ key, invalid model, 400). Transient errors abort the entire run unnecessarily.
 - Both `OpenAiProvider` and `AnthropicProvider` map their HTTP status codes to the
   appropriate `ProviderError` variant.
 
-## Design notes
+### Design notes
 
 - Use `tokio::time::sleep` for backoff — already in scope.
 - Backoff does not count against `max_iterations`.

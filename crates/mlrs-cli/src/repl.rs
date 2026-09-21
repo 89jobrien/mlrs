@@ -1,3 +1,5 @@
+//! Implements slash commands and Reedline support for interactive RLM sessions.
+
 use std::cell::RefCell;
 use std::sync::Arc;
 
@@ -18,9 +20,7 @@ use slash_lang::parser::ast::Arg;
 
 use mlrs_core::Rlm;
 
-// ---------------------------------------------------------------------------
-// Shared REPL state (thread-local so slash commands can access it)
-// ---------------------------------------------------------------------------
+// Thread-local session state shared by slash commands.
 
 thread_local! {
     static REPL_STATE: RefCell<ReplState> = RefCell::new(ReplState::default());
@@ -32,9 +32,7 @@ struct ReplState {
     context: Option<String>,
 }
 
-// ---------------------------------------------------------------------------
-// Slash commands
-// ---------------------------------------------------------------------------
+// Built-in slash command implementations.
 
 struct QueryCmd;
 impl SlashCommand for QueryCmd {
@@ -277,9 +275,7 @@ impl SlashCommand for RunCmd {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Slash command metadata — single source of truth for completion / hints
-// ---------------------------------------------------------------------------
+// Slash command metadata shared by completion and hints.
 
 const COMMANDS: &[(&str, &str)] = &[
     ("/query(<text>)", "Set the query to run"),
@@ -292,9 +288,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ("/quit", "Exit the REPL"),
 ];
 
-// ---------------------------------------------------------------------------
-// Prompt
-// ---------------------------------------------------------------------------
+// Reedline prompt rendering.
 
 struct MlrsPrompt;
 
@@ -323,9 +317,7 @@ impl Prompt for MlrsPrompt {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Completer — fires on any input starting with '/'
-// ---------------------------------------------------------------------------
+// Slash command completion for input starting with `/`.
 
 struct SlashCompleter;
 
@@ -361,9 +353,7 @@ impl Completer for SlashCompleter {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Hinter — inline fish-style ghost text
-// ---------------------------------------------------------------------------
+// Inline fish-style hints for partial slash commands.
 
 struct SlashHinter {
     current_hint: String,
@@ -409,9 +399,7 @@ impl Hinter for SlashHinter {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Highlighter — colour the command name vs arguments
-// ---------------------------------------------------------------------------
+// Syntax highlighting that distinguishes slash commands from arguments.
 
 struct SlashHighlighter;
 
@@ -435,10 +423,9 @@ impl Highlighter for SlashHighlighter {
     }
 }
 
-// ---------------------------------------------------------------------------
-// REPL loop
-// ---------------------------------------------------------------------------
+// Interactive read-evaluate loop.
 
+/// Runs the interactive slash-command REPL until the user exits.
 pub fn run(rlm: Rlm) -> Result<()> {
     let rlm = Arc::new(tokio::sync::Mutex::new(rlm));
     let mut registry = CommandRegistry::new(SlenvLoader::empty());

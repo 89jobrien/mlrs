@@ -1,3 +1,5 @@
+//! Core types and execution engine for recursive language-model inference.
+
 pub mod env;
 pub mod error;
 pub mod protocol;

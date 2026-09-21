@@ -22,7 +22,7 @@ No file I/O. No config parsing. No binary. Callers own values and write output t
 
 ## Core Types
 
-```
+```text
 Workflow
   ├── name: String
   ├── on: Trigger

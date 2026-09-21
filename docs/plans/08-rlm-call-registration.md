@@ -4,16 +4,16 @@ status: open
 priority: medium
 ---
 
-# Register rlm_call as a Real Rhai Function
+## Register rlm_call as a Real Rhai Function
 
-## Problem
+### Problem
 
 The system prompt documents `rlm_call(query, ctx_fragment)` as an available function,
 but it is never registered in `env.rs`. Any model that attempts to use it gets a Rhai
 runtime error. This is a documentation lie that silently degrades model performance on
 tasks where recursive decomposition would help.
 
-## Deliverables
+### Deliverables
 
 - Register `rlm_call(query: String, ctx: String) -> String` in `build_engine`.
 - Implementation: spawns a child `Rlm` with `depth = parent.depth + 1`, runs
@@ -25,7 +25,7 @@ tasks where recursive decomposition would help.
 - The child `Rlm` inherits `max_iterations`, `max_retries_per_cell`, and the provider
   from the parent via thread-local or closure capture.
 
-## Design notes
+### Design notes
 
 - Provider is `Arc<dyn LlmProvider>` — cheap to clone into the closure.
 - `block_on` inside a Rhai function called from within an async context requires care:

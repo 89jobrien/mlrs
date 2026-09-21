@@ -1,3 +1,5 @@
+//! Defines failures produced while running an RLM inference loop.
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]

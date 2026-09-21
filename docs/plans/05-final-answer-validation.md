@@ -4,15 +4,15 @@ status: open
 priority: medium
 ---
 
-# Final Answer Validation
+## Final Answer Validation
 
-## Problem
+### Problem
 
 `done(answer)` in a Rhai script exits the loop immediately with whatever string is
 passed. There is no way to enforce that the answer meets a format contract (JSON,
 markdown, non-empty, etc.) before returning it to the caller.
 
-## Deliverables
+### Deliverables
 
 - `AnswerValidator` trait in `mlrs-core`:
 
@@ -38,7 +38,7 @@ markdown, non-empty, etc.) before returning it to the caller.
 
 - `RlmError` gains `ValidationFailed(String)`.
 
-## Design notes
+### Design notes
 
 - Validators are pure functions — no async, no provider calls.
 - The feedback message on failure is a `user` role message injected into `build_messages`

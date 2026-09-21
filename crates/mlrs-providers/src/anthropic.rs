@@ -1,3 +1,5 @@
+//! Adapts the Anthropic Messages API to the core `LlmProvider` interface.
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use mlrs_core::{LlmProvider, Message, Role};
@@ -10,6 +12,7 @@ pub struct AnthropicProvider {
 }
 
 impl AnthropicProvider {
+    /// Creates a provider for `model` using `ANTHROPIC_API_KEY`.
     pub fn new(model: impl Into<String>) -> Result<Self> {
         let api_key = std::env::var("ANTHROPIC_API_KEY").context("ANTHROPIC_API_KEY not set")?;
         Ok(Self {
@@ -19,6 +22,7 @@ impl AnthropicProvider {
         })
     }
 
+    /// Creates a provider using `RSLM_MODEL` or the default Claude model.
     pub fn from_env() -> Result<Self> {
         let model = std::env::var("RSLM_MODEL").unwrap_or_else(|_| "claude-sonnet-4-6".to_string());
         Self::new(model)

@@ -4,15 +4,15 @@ status: open
 priority: high
 ---
 
-# Streaming Output
+## Streaming Output
 
-## Problem
+### Problem
 
 `LlmProvider::complete` blocks until the full response is available. For long model
 responses (multi-step Rhai scripts, verbose reasoning) this produces a dead cursor in the
 REPL and CLI. Users have no feedback that the model is working.
 
-## Deliverables
+### Deliverables
 
 - `LlmProvider` gains a second method with a default impl:
 
@@ -33,7 +33,7 @@ REPL and CLI. Users have no feedback that the model is working.
   arrive, then assembles the full script string for execution.
 - REPL `/run` command respects the `Rlm::streaming` flag.
 
-## Design notes
+### Design notes
 
 - Use `futures::stream::BoxStream` — already a transitive dep via `tokio`.
 - The assembled full-script string is identical whether streaming or not; execution path

@@ -4,15 +4,15 @@ status: open
 priority: medium
 ---
 
-# Notebook Persistence and Session Resumption
+## Notebook Persistence and Session Resumption
 
-## Problem
+### Problem
 
 Notebooks are in-memory only. A crash, timeout, or REPL exit loses all accumulated cell
 history. There is no way to inspect a past run, resume a partial run, or share a run
 trace for debugging.
 
-## Deliverables
+### Deliverables
 
 - `Notebook` already derives `Serialize`/`Deserialize`. Add:
   - `Notebook::save(&self, path: &Path) -> Result<()>` — writes JSON to path.
@@ -43,7 +43,7 @@ trace for debugging.
 
 - CLI: `--record <path>` flag on `query` subcommand.
 
-## Design notes
+### Design notes
 
 - `context_hash` rather than full context avoids doubling storage for large inputs.
 - `RunRecord` is in `mlrs-core::protocol` — it is a protocol type.

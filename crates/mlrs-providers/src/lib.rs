@@ -1,3 +1,5 @@
+//! Provider adapters for the `mlrs-core` LLM abstraction.
+
 pub mod anthropic;
 pub mod openai;
 

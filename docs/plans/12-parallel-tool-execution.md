@@ -4,9 +4,9 @@ status: open
 priority: low
 ---
 
-# Parallel Tool Execution
+## Parallel Tool Execution
 
-## Problem
+### Problem
 
 mlrs executes one Rhai script per iteration. If a model wants to probe multiple
 independent context regions in one step (e.g. `ctx_grep("foo")` AND `ctx_grep("bar")`),
@@ -17,7 +17,7 @@ This plan applies once mlrs supports a multi-call response format — currently 
 emits one script per turn. The prerequisite is defining a structured response format
 that allows the model to declare multiple independent scripts/queries in one response.
 
-## Deliverables
+### Deliverables
 
 - `MultiScript` response type: the model can optionally return a JSON-wrapped list of
   scripts instead of a single Rhai script. Detection heuristic: if the response begins
@@ -33,7 +33,7 @@ that allows the model to declare multiple independent scripts/queries in one res
 
 - `Rlm::with_parallel_scripts(bool)` builder (default `false`, opt-in).
 
-## Design notes
+### Design notes
 
 - This is architecturally complex because Rhai's `Engine` is not `Send`. Each parallel
   script needs its own engine instance built from the same context. `build_engine` must

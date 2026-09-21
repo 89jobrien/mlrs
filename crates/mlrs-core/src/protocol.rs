@@ -1,8 +1,8 @@
+//! Defines notebook records, cell results, token estimates, and output truncation.
+
 use serde::{Deserialize, Serialize};
 
-// ---------------------------------------------------------------------------
-// Truncation policy
-// ---------------------------------------------------------------------------
+// Output truncation configuration and helpers.
 
 /// How to shorten a cell output that exceeds `max_bytes`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,9 +97,7 @@ fn ceil_char_boundary(s: &str, index: usize) -> usize {
         .unwrap_or(s.len())
 }
 
-// ---------------------------------------------------------------------------
-// Token estimation
-// ---------------------------------------------------------------------------
+// Notebook accounting and execution records.
 
 /// Character-based token estimate (~4 bytes per token, rounded up).
 ///
@@ -133,6 +131,7 @@ pub struct Notebook {
 }
 
 impl Notebook {
+    /// Appends an executed script and its output to the notebook.
     pub fn push(&mut self, script: String, output: String) {
         self.cells.push(Cell { script, output });
     }
@@ -165,7 +164,7 @@ impl Notebook {
 mod tests {
     use super::*;
 
-    // --- truncation ---
+    // Truncation behavior.
 
     #[test]
     fn truncate_noop_when_under_limit() {
@@ -231,7 +230,7 @@ mod tests {
         assert!(!out.contains('\u{FFFD}'), "got replacement char: {out}");
     }
 
-    // --- token estimation ---
+    // Token estimation behavior.
 
     #[test]
     fn approx_token_count_rounds_up() {
@@ -250,7 +249,7 @@ mod tests {
         assert_eq!(nb.token_estimate(), 4);
     }
 
-    // --- notebook ---
+    // Notebook and step-result behavior.
 
     #[test]
     fn notebook_push_and_history() {

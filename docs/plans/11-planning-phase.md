@@ -4,15 +4,15 @@ status: open
 priority: low
 ---
 
-# Planning Phase
+## Planning Phase
 
-## Problem
+### Problem
 
 For long-horizon tasks, the model drifts without an explicit plan. smolagents addresses
 this with `planning_interval` — every N steps the model generates a structured plan
 before acting. This improves coherence on tasks requiring many iterations.
 
-## Deliverables
+### Deliverables
 
 - `PlanningConfig` in `mlrs-core`:
 
@@ -46,7 +46,7 @@ before acting. This improves coherence on tasks requiring many iterations.
 
 - `StepEvent::PlanGenerated { iteration: usize, plan: String }` for observability.
 
-## Design notes
+### Design notes
 
 - Planning calls do not count against `max_iterations`.
 - `plan_history` is included in `RunRecord` (plan 06) for post-hoc inspection.

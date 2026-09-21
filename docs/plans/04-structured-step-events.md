@@ -4,15 +4,15 @@ status: open
 priority: medium
 ---
 
-# Structured Step Events
+## Structured Step Events
 
-## Problem
+### Problem
 
 mlrs has no way for callers to observe what is happening inside a run. The only
 observability is `verbose: bool`, which writes to stderr. The REPL cannot show a spinner,
 per-cell status, token counts, or compaction notices without invasive hacking.
 
-## Deliverables
+### Deliverables
 
 - `StepEvent` enum in `mlrs-core::protocol`:
 
@@ -35,7 +35,7 @@ per-cell status, token counts, or compaction notices without invasive hacking.
   `[iter N] executing cell…` updated in-place via `\r`.
 - CLI `query --verbose` flag prints events as they arrive.
 
-## Design notes
+### Design notes
 
 - `mpsc::Sender<StepEvent>` is non-blocking (bounded channel, capacity = 32). If the
   receiver is slow/dropped, `send` errors are silently ignored — events are best-effort.

@@ -4,15 +4,15 @@ status: done
 priority: medium
 ---
 
-# Per-Cell Output Truncation
+## Per-Cell Output Truncation
 
-## Problem
+### Problem
 
 `ctx_grep` or `print_cell` calls that produce large outputs are stored verbatim in the
 notebook and fed back into the context window on the next iteration. A grep returning
 10k lines will silently consume most of the model's context budget.
 
-## Deliverables
+### Deliverables
 
 - `TruncationPolicy` in `mlrs-core`:
 
@@ -41,7 +41,7 @@ notebook and fed back into the context window on the next iteration. A grep retu
 - `TruncationPolicy::none()` disables truncation (for tests and when caller manages
   context themselves).
 
-## Design notes
+### Design notes
 
 - Truncation happens at the engine layer (`env.rs` / `rlm.rs`), not in the Rhai
   functions themselves — callers get the raw value from `ctx_grep`, but what gets stored

@@ -1,3 +1,5 @@
+//! Adapts the OpenAI chat completions API to the core `LlmProvider` interface.
+
 use anyhow::{Context, Result};
 use async_openai::{
     config::OpenAIConfig,
@@ -17,6 +19,7 @@ pub struct OpenAiProvider {
 }
 
 impl OpenAiProvider {
+    /// Creates a provider for the specified model using the default OpenAI client.
     pub fn new(model: impl Into<String>) -> Self {
         Self {
             client: Client::new(),
@@ -24,6 +27,7 @@ impl OpenAiProvider {
         }
     }
 
+    /// Creates a provider using `RSLM_MODEL` or the default OpenAI model.
     pub fn from_env() -> Self {
         let model = std::env::var("RSLM_MODEL").unwrap_or_else(|_| "gpt-4o".to_string());
         Self::new(model)

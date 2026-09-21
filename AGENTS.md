@@ -28,7 +28,7 @@ All development workflows use standard Rust tooling. No xtask or make required.
 
 ## Workspace Layout
 
-```
+```text
 mlrs/
 ├── crates/
 │   ├── mlrs-core/      # RLM engine, Rhai scripting, protocol types

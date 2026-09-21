@@ -1,3 +1,5 @@
+//! Builds and executes the Rhai environment used by each RLM notebook cell.
+
 use anyhow::Result;
 use rhai::{Engine, Scope};
 
@@ -68,12 +70,8 @@ pub fn build_engine(ctx: String) -> (Engine, Scope<'static>) {
         });
     }
 
-    // Store the Arc refs on the engine's user data is not supported in rhai 1.x without
-    // a wrapper struct. Instead we return a scope with the ctx variable set, and expose
-    // print_buf / final_buf handles through thread-locals accessed by execute_script.
-    //
-    // SAFETY: We use a thread-local registry keyed by the engine pointer address as a
-    // workaround for rhai's lack of arbitrary user-data storage.
+    // Rhai 1.x cannot store these handles as engine user data, so execute_script accesses
+    // thread-local handles. Building another engine on this thread replaces the current handles.
     PRINT_BUF.with(|pb| *pb.borrow_mut() = Some(Arc::clone(&print_buf)));
     FINAL_BUF.with(|fb| *fb.borrow_mut() = Some(Arc::clone(&final_buf)));
 

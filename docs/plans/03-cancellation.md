@@ -4,15 +4,15 @@ status: done
 priority: high
 ---
 
-# Cancellation
+## Cancellation
 
-## Problem
+### Problem
 
 `Rlm::run` is an async loop with no cancellation path. The REPL has no way to interrupt
 a running query (Ctrl-C during `/run` does nothing). Long-running or stuck loops must
 wait for `max_iterations` to exhaust.
 
-## Deliverables
+### Deliverables
 
 - `Rlm::run` signature changes to accept a `CancellationToken`:
 
@@ -34,7 +34,7 @@ wait for `max_iterations` to exhaust.
 - CLI `query` subcommand does the same.
 - Callers that don't need cancellation pass `CancellationToken::new()` (never cancelled).
 
-## Design notes
+### Design notes
 
 - Use `tokio_util::sync::CancellationToken` — already used in `slash` and available in
   the ecosystem. Add as a dep to `mlrs-core`.
